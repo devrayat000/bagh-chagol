@@ -2,6 +2,8 @@
 
 import type { MapDef, Side } from "./rules";
 import type { Difficulty } from "./ai/client";
+import type { Avatar } from "./art/crew";
+import type { FourRowDef } from "./fourrow/rules";
 
 export interface MapEntry {
   def: MapDef;
@@ -41,4 +43,39 @@ export function loadSettings(): Settings {
 
 export function saveSettings(s: Settings) {
   localStorage.setItem(KEY, JSON.stringify(s));
+}
+
+// ----- four-in-a-row -----------------------------------------------------------
+
+const FOURROW = new URL(import.meta.env.BASE_URL + "fourrow/", document.baseURI).href;
+
+export interface FourRowEntry {
+  def: FourRowDef;
+  modelUrl: string | null;
+}
+
+export async function loadFourRow(): Promise<FourRowEntry> {
+  const def: FourRowDef = await (await fetch(FOURROW + "game.json")).json();
+  return { def, modelUrl: def.trained ? FOURROW + "model.onnx" : null };
+}
+
+export interface FourRowSettings {
+  avatar: Avatar;
+  side: Side; // 0 = you drop first (red)
+  difficulty: Difficulty["id"];
+}
+
+const FOURROW_KEY = "fourrow.settings";
+
+export function loadFourRowSettings(): FourRowSettings {
+  const fallback: FourRowSettings = { avatar: "bean", side: 0, difficulty: "medium" };
+  try {
+    return { ...fallback, ...JSON.parse(localStorage.getItem(FOURROW_KEY) ?? "{}") };
+  } catch {
+    return fallback;
+  }
+}
+
+export function saveFourRowSettings(s: FourRowSettings) {
+  localStorage.setItem(FOURROW_KEY, JSON.stringify(s));
 }

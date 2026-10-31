@@ -1,0 +1,8 @@
+{
+ "id": "fourrow",
+ "rows": 6,
+ "cols": 7,
+ "connect": 4,
+ "trained": false,
+ "iteration": 0
+}

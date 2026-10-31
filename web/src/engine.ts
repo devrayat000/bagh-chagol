@@ -9,7 +9,8 @@ export const k = kaplay({
   texFilter: "linear",
   crisp: false,
   touchToMouse: true,
-  maxFPS: 60,
+  // No maxFPS: kaplay renders only when MORE than 1/maxFPS has passed, so on a 60 Hz
+  // screen any slightly early frame was skipped (~40 fps with 33 ms hitches).
   burp: false,
   plugins: [crew],
 });

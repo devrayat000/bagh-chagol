@@ -1,4 +1,7 @@
-// Tiny synthesised sound effects (Web Audio), so the game needs no audio files.
+// Tiny synthesised sound effects (Web Audio), so the game needs no audio files,
+// plus a few voices from the KAPLAY crew.
+
+import { k } from "./engine";
 
 let ctx: AudioContext | null = null;
 export let soundOn = localStorage.getItem("bagh.sound") !== "off";
@@ -66,4 +69,17 @@ export const sfx = {
   lose: () => [392, 330, 262].forEach((f, i) => tone(f, 0.4, "triangle", 0.1, i * 0.16)),
   draw: () => [440, 440].forEach((f, i) => tone(f, 0.25, "sine", 0.1, i * 0.18)),
   click: () => tone(880, 0.04, "sine", 0.05),
+  /** A disc landing in the board: a plastic clack, lower for deeper drops. */
+  drop: (depth: number) => {
+    noise(0.05, 0.7, 2600 - depth * 180);
+    tone(520 - depth * 40, 0.08, "triangle", 0.1, 0, 300 - depth * 20);
+  },
+  /** Hovering over a new column. */
+  tick: () => tone(1200, 0.025, "sine", 0.025),
 };
+
+/** Play a crew sound (loaded in art/crew.ts) unless sound is off. */
+export function crewSound(name: string, opts: { volume?: number; detune?: number } = {}) {
+  if (!soundOn) return;
+  k.play(name, { volume: opts.volume ?? 0.6, detune: opts.detune ?? 0 });
+}

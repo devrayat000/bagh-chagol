@@ -20,8 +20,9 @@ uv run main.py eval  --preset fourrow      # vs random / greedy / alpha-beta dep
 uv run main.py play  --preset fourrow      # pygame window; --side yellow to move second
 ```
 
-**Web game:** a kaplay version you can play in the browser lives in [`web/`](web/README.md).
-Export trained networks to it with `uv run --group web export_web.py`.
+**Web game:** a kaplay version of both games (Bagh-Chagol and Four in a Row) you can play in
+the browser lives in [`web/`](web/README.md). Export trained networks to it with
+`uv run --group web export_web.py` (or `... export_web.py fourrow` for one game).
 
 Bagh-chal presets (`bagh/config.py`; four-in-a-row presets are in `fourrow/config.py`):
 

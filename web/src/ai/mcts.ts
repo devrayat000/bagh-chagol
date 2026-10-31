@@ -1,29 +1,39 @@
-// PUCT Monte Carlo Tree Search - a port of bagh/mcts.py.
+// PUCT Monte Carlo Tree Search - a port of core/mcts.py.
 //
 // Each simulation walks down the tree picking the child with the best
 //     Q + c_puct * P * sqrt(N_parent) / (1 + N_child)
 // evaluates the new leaf with the network (priors + value), and backs the
 // value up the path, flipping its sign at every level.
+//
+// Like the Python version it works for any two-player game whose positions
+// implement SearchState.
 
-import { State } from "../rules";
+/** What the search needs from a game position (bagh-chal and four-in-a-row both implement it). */
+export interface SearchState {
+  readonly toPlay: 0 | 1;
+  legalActions(): number[];
+  apply(action: number): SearchState;
+  winner(): 0 | 1 | "draw" | null;
+  isTerminal(): boolean;
+}
 
 export interface Evaluation {
   priors: Float32Array; // one per legal action, in state.legalActions() order
   value: number; // expected result for the side to move, in [-1, 1]
 }
 
-export interface Evaluator {
-  evaluate(state: State): Promise<Evaluation>;
+export interface Evaluator<S extends SearchState = SearchState> {
+  evaluate(state: S): Promise<Evaluation>;
 }
 
-class Node {
-  children: Map<number, Node> | null = null;
+class Node<S extends SearchState> {
+  children: Map<number, Node<S>> | null = null;
   n = 0;
   w = 0; // total value, from the view of the player who moved INTO this node
-  constructor(public prior: number, public state: State | null = null) {}
+  constructor(public prior: number, public state: S | null = null) {}
 }
 
-function outcome(state: State): number {
+function outcome(state: SearchState): number {
   const w = state.winner();
   if (w === "draw") return 0;
   return w === state.toPlay ? 1 : -1;
@@ -34,8 +44,8 @@ export interface SearchResult {
   value: number; // root value for the side to move
 }
 
-export async function search(root: State, evaluator: Evaluator, sims: number, cPuct = 1.5): Promise<SearchResult> {
-  const rootNode = new Node(1, root);
+export async function search<S extends SearchState>(root: S, evaluator: Evaluator<S>, sims: number, cPuct = 1.5): Promise<SearchResult> {
+  const rootNode = new Node<S>(1, root);
   expand(rootNode, (await evaluator.evaluate(root)).priors);
 
   for (let i = 0; i < sims; i++) {
@@ -55,30 +65,30 @@ export async function search(root: State, evaluator: Evaluator, sims: number, cP
   return { visits, value: -rootNode.w / Math.max(rootNode.n, 1) };
 }
 
-function select(root: Node, cPuct: number): Node[] {
+function select<S extends SearchState>(root: Node<S>, cPuct: number): Node<S>[] {
   let node = root;
   const path = [root];
   while (node.children !== null) {
     const sqrtN = Math.sqrt(Math.max(node.n, 1));
-    let bestScore = -Infinity, bestA = -1, best: Node | null = null;
+    let bestScore = -Infinity, bestA = -1, best: Node<S> | null = null;
     for (const [a, child] of node.children) {
       const q = child.n ? child.w / child.n : 0;
       const score = q + (cPuct * child.prior * sqrtN) / (1 + child.n);
       if (score > bestScore) [bestScore, bestA, best] = [score, a, child];
     }
-    if (best!.state === null) best!.state = node.state!.apply(bestA);
+    if (best!.state === null) best!.state = node.state!.apply(bestA) as S;
     node = best!;
     path.push(node);
   }
   return path;
 }
 
-function expand(node: Node, priors: Float32Array) {
+function expand<S extends SearchState>(node: Node<S>, priors: Float32Array) {
   const legal = node.state!.legalActions();
-  node.children = new Map(legal.map((a, i) => [a, new Node(priors[i])]));
+  node.children = new Map(legal.map((a, i) => [a, new Node<S>(priors[i])]));
 }
 
-function backup(path: Node[], value: number) {
+function backup(path: Node<SearchState>[], value: number) {
   for (let i = path.length - 1; i >= 0; i--) {
     path[i].n += 1;
     path[i].w -= value;

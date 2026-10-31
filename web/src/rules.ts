@@ -166,6 +166,14 @@ export class State {
     return planes;
   }
 
+  inputDims(): [number, number, number] {
+    return [NUM_PLANES, this.geo.def.rows, this.geo.def.cols];
+  }
+
+  cacheKey(): string {
+    return `${this.board.join("")}|${this.toPlay}|${this.captures}|${this.ply}`;
+  }
+
   /** Plain-data form, for sending positions to the AI worker. */
   toJSON(): StateData {
     return { board: Array.from(this.board), toPlay: this.toPlay, captures: this.captures, ply: this.ply };

@@ -1,22 +1,28 @@
 import type { InferenceSession, Tensor } from "onnxruntime-web";
-import { GOAT, NUM_PLANES, State, TIGER_SIDE } from "../rules";
-import type { Evaluation, Evaluator } from "./mcts";
+import { GOAT, State, TIGER_SIDE } from "../rules";
+import type { Evaluation, Evaluator, SearchState } from "./mcts";
 
 type TensorCtor = new (type: "float32", data: Float32Array, dims: number[]) => Tensor;
 
+/** A position the network can read: both games' State classes implement this. */
+export interface NetState extends SearchState {
+  encode(): Float32Array; // input planes, flattened
+  inputDims(): [number, number, number]; // (planes, rows, cols)
+  cacheKey(): string; // identifies the position, for the evaluation cache
+}
+
 /** The trained policy/value network, exported from PyTorch to ONNX. */
-export class NetEvaluator implements Evaluator {
+export class NetEvaluator implements Evaluator<NetState> {
   private cache = new Map<string, Evaluation>(); // transpositions are common in these games
 
   constructor(private session: InferenceSession, private TensorClass: TensorCtor) {}
 
-  async evaluate(state: State): Promise<Evaluation> {
-    const key = `${state.board.join("")}|${state.toPlay}|${state.captures}|${state.ply}`;
+  async evaluate(state: NetState): Promise<Evaluation> {
+    const key = state.cacheKey();
     const hit = this.cache.get(key);
     if (hit) return hit;
 
-    const { rows, cols } = state.geo.def;
-    const input = new this.TensorClass("float32", state.encode(), [1, NUM_PLANES, rows, cols]);
+    const input = new this.TensorClass("float32", state.encode(), [1, ...state.inputDims()]);
     const out = await this.session.run({ planes: input });
     const logits = out.policy.data as Float32Array;
     const value = (out.value.data as Float32Array)[0];
@@ -42,7 +48,7 @@ export class NetEvaluator implements Evaluator {
  * Priors favour captures; the value is the result of a few quick games where the
  * tiger grabs captures and the goats avoid handing them over.
  */
-export class RolloutEvaluator implements Evaluator {
+export class RolloutEvaluator implements Evaluator<State> {
   constructor(private playouts = 2, private depth = 40) {}
 
   async evaluate(state: State): Promise<Evaluation> {

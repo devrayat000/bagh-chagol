@@ -22,7 +22,7 @@ export function menuScene(maps: MapEntry[], settings: Settings, ai: AiClient) {
     starting = true;
     saveSettings(settings);
     const entry = current();
-    await ai.load(entry.def, entry.modelUrl);
+    await ai.load({ game: "bagh", map: entry.def }, entry.modelUrl);
     const difficulty = DIFFICULTIES.find((d) => d.id === settings.difficulty)!;
     k.go("play", { entry, human: settings.side, difficulty, ai } satisfies PlayArgs);
   }
@@ -31,6 +31,7 @@ export function menuScene(maps: MapEntry[], settings: Settings, ai: AiClient) {
     if (btn === "left") ui.click(k.mousePos().x, k.mousePos().y);
   });
   k.onKeyPress("enter", start);
+  k.onKeyPress("escape", () => k.go("home"));
 
   k.onDraw(() => {
     ui.beginFrame();
@@ -107,6 +108,7 @@ export function menuScene(maps: MapEntry[], settings: Settings, ai: AiClient) {
       diffBtns(gx, y + 106, gw);
       ui.button({ x: gx, y: y + 164, w: gw, h: 56 }, { label: starting ? "Loading…" : "Play", style: "primary", size: 24, onClick: start });
     }
+    ui.iconButton({ x: 14, y: 14, w: 46, h: 46 }, "crew-home", () => k.go("home"), { tooltip: "All games" });
     ui.endFrame();
   });
 

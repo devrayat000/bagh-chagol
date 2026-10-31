@@ -1,7 +1,11 @@
 // Main-thread side of the AI worker: a promise-based wrapper.
 
-import type { MapDef, State } from "../rules";
-import type { WorkerRequest, WorkerResponse } from "./worker";
+import type { GameLoad, WorkerRequest, WorkerResponse } from "./worker";
+
+/** Any position the worker can rebuild: bagh State or FourRowState. */
+interface Sendable {
+  toJSON(): Extract<WorkerRequest, { type: "think" }>["state"];
+}
 
 export interface Difficulty {
   id: "easy" | "medium" | "hard";
@@ -43,14 +47,14 @@ export class AiClient {
     };
   }
 
-  load(map: MapDef, modelUrl: string | null): Promise<boolean> {
+  load(load: GameLoad, modelUrl: string | null): Promise<boolean> {
     return new Promise((resolve) => {
       this.onReady = resolve;
-      this.send({ type: "load", map, modelUrl });
+      this.send({ type: "load", load, modelUrl });
     });
   }
 
-  think(state: State, difficulty: Difficulty): Promise<AiMove> {
+  think(state: Sendable, difficulty: Difficulty): Promise<AiMove> {
     const id = this.nextId++;
     return new Promise((resolve) => {
       this.pending.set(id, resolve);
