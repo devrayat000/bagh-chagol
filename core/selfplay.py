@@ -11,14 +11,13 @@ from collections import Counter
 
 import numpy as np
 
-from .config import GameConfig
-from .game import DRAW, GOAT_SIDE, TIGER_SIDE, State, outcome
 from .mcts import MCTS, select_action
+from .spec import DRAW, outcome, spec_of
 
 Sample = tuple[np.ndarray, np.ndarray, float]  # (planes, MCTS policy pi, final result z)
 
 
-def self_play(mcts: MCTS, cfg: GameConfig, n_games: int, temp_plies: int,
+def self_play(mcts: MCTS, cfg, n_games: int, temp_plies: int,
               rng: np.random.Generator) -> tuple[list[Sample], Counter]:  # fmt: skip
     """Play n_games of the agent against itself.
 
@@ -27,7 +26,7 @@ def self_play(mcts: MCTS, cfg: GameConfig, n_games: int, temp_plies: int,
       pi     - MCTS visit distribution (the improved policy we want the net to imitate)
       z      - how the game actually ended, from the view of the side to move then
     """
-    states = [State.initial(cfg)] * n_games
+    states = [spec_of(cfg).initial()] * n_games
     ids = list(range(n_games))
     history: list[list[tuple[np.ndarray, np.ndarray, int]]] = [[] for _ in range(n_games)]
     results: dict[int, int] = {}
@@ -53,12 +52,12 @@ def self_play(mcts: MCTS, cfg: GameConfig, n_games: int, temp_plies: int,
     return samples, Counter(results.values())
 
 
-def play_match(tiger_agent, goat_agent, cfg: GameConfig, n_games: int) -> Counter:
-    """Returns a Counter of winners: TIGER_SIDE, GOAT_SIDE, DRAW."""
-    states = [State.initial(cfg)] * n_games
+def play_match(first_agent, second_agent, cfg, n_games: int) -> Counter:
+    """first_agent plays side 0 (tiger / red), second_agent side 1. Returns a Counter of winners: 0, 1, DRAW."""
+    states = [spec_of(cfg).initial()] * n_games
     results = Counter()
     while states:
-        agent = tiger_agent if states[0].to_play == TIGER_SIDE else goat_agent
+        agent = first_agent if states[0].to_play == 0 else second_agent
         next_states = []
         for s, a in zip(states, agent.act(states)):
             nxt = s.apply(a)
@@ -77,6 +76,6 @@ def score(results: Counter, side: int) -> float:
     return (results[side] + 0.5 * results[DRAW]) / total if total else 0.0
 
 
-def format_results(results: Counter) -> str:
-    return f"T{results[TIGER_SIDE]}/G{results[GOAT_SIDE]}/D{results[DRAW]}"
+def format_results(results: Counter, letters: str = "TG") -> str:
+    return f"{letters[0]}{results[0]}/{letters[1]}{results[1]}/D{results[DRAW]}"
 

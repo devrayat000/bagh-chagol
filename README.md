@@ -14,12 +14,16 @@ uv run main.py play  --preset tiny         # play against it
 uv run main.py train --preset hourglass    # the local 13-point board
 uv run main.py play  --preset hourglass
 uv run main.py train --preset small        # 5x5, ~1.5 h
+
+uv run main.py train --preset fourrow      # four-in-a-row, 7x6 (same AlphaZero code)
+uv run main.py eval  --preset fourrow      # vs random / greedy / alpha-beta depth 4
+uv run main.py play  --preset fourrow      # pygame window; --side yellow to move second
 ```
 
 **Web game:** a kaplay version you can play in the browser lives in [`web/`](web/README.md).
 Export trained networks to it with `uv run --group web export_web.py`.
 
-Presets (`bagh/config.py`):
+Bagh-chal presets (`bagh/config.py`; four-in-a-row presets are in `fourrow/config.py`):
 
 | preset | board | pieces | first move | tiger wins after | perfect play |
 |---|---|---|---|---|---|
@@ -30,15 +34,35 @@ Presets (`bagh/config.py`):
 
 See [docs/WALKTHROUGH.md](docs/WALKTHROUGH.md) for how every part works.
 
+The code is split into a shared AlphaZero library and one folder per game:
+
 | file | role |
 |---|---|
+| **`core/`** | **shared by every game** |
+| `core/spec.py` | `GameSpec`: what training needs to know about a game; `DRAW`, `outcome` |
+| `core/config.py` | `TrainConfig` hyperparameters, `Preset` |
+| `core/net.py` | ResNet policy/value network, CUDA-graph inference |
+| `core/mcts.py` | batched PUCT Monte Carlo Tree Search |
+| `core/selfplay.py` | self-play data generation and matches |
+| `core/train.py` | the AlphaZero training loop |
+| `core/evaluate.py` | trained net vs baselines |
+| `core/symmetry.py` | applies a board symmetry to a batch (augmentation) |
+| `core/baselines.py` | random opponent |
+| **`bagh/`** | **বাঘ-ছাগল** |
 | `bagh/boards.py` | board shapes: points + lines (alquerque, hourglass) |
 | `bagh/game.py` | rules, move encoding, network input planes |
+| `bagh/config.py` | `GameConfig` + presets |
 | `bagh/solver.py` | exact retrograde solver (≤ ~3M positions), used as ground truth |
-| `bagh/net.py` | ResNet policy/value network, CUDA-graph inference |
-| `bagh/mcts.py` | batched PUCT Monte Carlo Tree Search |
-| `bagh/selfplay.py` | self-play data generation and matches |
-| `bagh/train.py` | the AlphaZero training loop |
-| `bagh/symmetry.py` | 8× data augmentation |
-| `bagh/baselines.py` | random and greedy opponents |
+| `bagh/symmetry.py` | the board's symmetries (up to 8) |
+| `bagh/baselines.py` | greedy opponent |
 | `bagh/play.py` | Pygame UI |
+| **`fourrow/`** | **four-in-a-row** |
+| `fourrow/game.py` | rules, input planes, mirror symmetry |
+| `fourrow/config.py` | `FourRowConfig` + presets |
+| `fourrow/agents.py` | greedy and alpha-beta opponents |
+| `fourrow/play.py` | Pygame UI |
+| `presets.py` | every game's presets, by name (used by `main.py`) |
+
+Adding a game = a new folder with a `State` class (`legal_actions`, `apply`, `winner`,
+`encode`, `to_play`, `ply`, `num_actions`), a config with a `spec()` method, and its
+presets registered in `presets.py`.

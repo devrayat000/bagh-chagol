@@ -29,7 +29,7 @@ TEXT = (20, 30, 20)
 def make_agent(preset: str, opponent: str, sims: int, checkpoint: Path | None):
     game = get_preset(preset).game
     if opponent == "random":
-        from .baselines import RandomAgent
+        from core.baselines import RandomAgent
 
         return RandomAgent(), "random"
     if opponent == "greedy":
@@ -41,8 +41,8 @@ def make_agent(preset: str, opponent: str, sims: int, checkpoint: Path | None):
 
         return SolverAgent(game), "perfect solver"
 
-    from .mcts import MCTS, MCTSAgent
-    from .net import NetEvaluator, UniformEvaluator, default_device, load_checkpoint
+    from core.mcts import MCTS, MCTSAgent
+    from core.net import NetEvaluator, UniformEvaluator, default_device, load_checkpoint
 
     if opponent == "mcts":
         return MCTSAgent(MCTS(UniformEvaluator(), sims)), f"plain MCTS ({sims} sims)"

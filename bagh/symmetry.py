@@ -12,13 +12,12 @@ rotation); rotating it by 90° would not map lines to lines.
 Each symmetry is stored as two "gather" index arrays:
   cell_idx[i]   = which old grid cell lands on new grid cell i   (for input planes)
   action_idx[a] = which old action becomes new action a          (for policies)
-so `new = old[..., idx]` transforms both.
+so `new = old[..., idx]` transforms both (core/symmetry.py applies them).
 """
 
 from functools import lru_cache
 
 import numpy as np
-import torch
 
 from .boards import get_board
 
@@ -56,12 +55,3 @@ def symmetries(board: str) -> list[tuple[np.ndarray, np.ndarray]]:
         result.append((cell_idx, action_idx))
     return result
 
-
-def transform_batch(planes: torch.Tensor, policy: torch.Tensor, sym: tuple[np.ndarray, np.ndarray]):
-    """Apply one symmetry to a batch: planes (B, C, rows, cols), policy (B, P*P)."""
-    cell_idx, action_idx = sym
-    device = planes.device
-    ci = torch.as_tensor(cell_idx, device=device)
-    ai = torch.as_tensor(action_idx, device=device)
-    new_planes = planes.flatten(2)[..., ci].view_as(planes)
-    return new_planes, policy[:, ai]

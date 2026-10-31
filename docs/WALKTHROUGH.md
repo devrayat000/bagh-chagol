@@ -135,7 +135,7 @@ a solvable board you can.
 
 ---
 
-## Step 3: the network (`bagh/net.py`)
+## Step 3: the network (`core/net.py`)
 
 A small **ResNet**, like the one AlphaZero used, scaled down:
 
@@ -162,7 +162,7 @@ alone made self-play **2.1× faster**.
 
 ---
 
-## Step 4a: MCTS (`bagh/mcts.py`)
+## Step 4a: MCTS (`core/mcts.py`)
 
 Each **simulation** does this:
 
@@ -196,7 +196,7 @@ Even *without* a network (`UniformEvaluator`: flat priors, value 0), MCTS
 already beats random play on 3×3. On 5×5 it mostly can't, because the end of the
 game is too far away to see. That gap is exactly what the value network fills.
 
-## Step 4b: self-play and training (`bagh/selfplay.py`, `bagh/train.py`)
+## Step 4b: self-play and training (`core/selfplay.py`, `core/train.py`)
 
 **Self-play** records, for every position: `(planes, π = visit distribution,
 z = final result from that player's view)`.
@@ -371,6 +371,50 @@ points), `scenery.ts` the moonlit village. The pieces are SVG token art loaded
 with `loadSprite`. The one exception is the Bengali title: kaplay rasterises
 text one character at a time, which breaks Bengali vowel signs, so the title is
 an image made once by `bun scripts/make-title.mjs`.
+
+## Step 9: a second game - four-in-a-row (`fourrow/`)
+
+```
+uv run pytest tests/test_fourrow.py
+uv run main.py train --preset fourrow           # ~1-3 h on an RTX 3060 (60 iterations)
+uv run main.py eval  --preset fourrow
+uv run main.py play  --preset fourrow           # click a column (or press 1-7)
+```
+
+Nothing in MCTS, self-play or the training loop knows which game it is playing.
+They only call a few methods on a `State` (`legal_actions`, `apply`, `winner`,
+`encode`, `to_play`, `ply`, `num_actions`). Everything else comes from a
+`GameSpec` (`core/spec.py`), which each game config builds in its `spec()` method:
+the input shape, the number of actions, the symmetries and the baseline opponents.
+So the shared code moved to `core/`, and a new game is just a new folder.
+
+**Rules and moves** (`fourrow/game.py`). An action is a column, so the policy head
+has only 7 outputs, against P×P for bagh-chal. `winner()` only checks the 4 lines
+through the last piece dropped. A full board is a draw.
+
+**Input planes: "mine / theirs", not "red / yellow".** Plane 0 holds the pieces of
+the side to move and plane 1 the opponent's. A threat then looks the same to the
+net whichever colour it is playing, so it learns each pattern once instead of twice.
+Plane 2 still says whose turn it is, because moving first is an advantage.
+
+**Only one symmetry.** Gravity pulls down, so flipping the board upside down or
+rotating it gives positions that can't happen. Only the left-right mirror keeps
+the rules, which gives 2× data instead of bagh-chal's 8×.
+
+**Dirichlet alpha = 1.0.** AlphaZero sets the noise to roughly 10 / (typical number
+of legal moves): 0.3 for chess, 0.03 for Go. With 7 moves a small alpha would put
+nearly all the noise on a single random column. Alpha ≈ 1 spreads it out, so self-play
+still tries every column now and then.
+
+**What "good" looks like.** Four-in-a-row is solved: with perfect play the first
+player (red) wins by starting in the centre column. So a strong agent should:
+- beat random and greedy almost every time;
+- beat the depth-4 alpha-beta agent (`fourrow/agents.py`) as red;
+- hold its own against it as yellow.
+
+Expect red's self-play win rate to rise as the net gets stronger. This game has no
+exact solver in the project, so the alpha-beta agent is the fixed yardstick, as the
+greedy baseline is for bagh-chal.
 
 ## Ideas for later
 

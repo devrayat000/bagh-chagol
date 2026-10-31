@@ -1,6 +1,7 @@
-"""Simple scripted opponents, used to sanity-check the learning agent.
+"""Scripted bagh-chal opponents, used to sanity-check the learning agent.
 
 An agent is anything with `act(states: list[State]) -> list[int]`.
+RandomAgent works for every game and lives in core/baselines.py.
 """
 
 from __future__ import annotations
@@ -8,14 +9,6 @@ from __future__ import annotations
 import numpy as np
 
 from .game import GOAT_SIDE, TIGER_SIDE, State
-
-
-class RandomAgent:
-    def __init__(self, seed: int | None = None):
-        self.rng = np.random.default_rng(seed)
-
-    def act(self, states: list[State]) -> list[int]:
-        return [int(self.rng.choice(s.legal_actions())) for s in states]
 
 
 class GreedyAgent:

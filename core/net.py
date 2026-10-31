@@ -1,10 +1,12 @@
 """The policy/value network: a small residual CNN.
 
-Input : feature planes (B, NUM_PLANES, rows, cols) from State.encode()
-Output: policy logits (B, P*P) - one score per (from, to) move, P = number of points
-        value         (B,)     - expected result in [-1, 1] for the side to move
+Input : feature planes (B, num_planes, rows, cols) from State.encode()
+Output: policy logits (B, num_actions) - one score per move
+                                         (bagh: P*P (from, to) pairs; four-in-a-row: 7 columns)
+        value         (B,)             - expected result in [-1, 1] for the side to move
 
-One network plays both sides; plane 2 tells it whose turn it is.
+One network plays both sides; plane 2 tells it whose turn it is. The sizes
+come from the game's GameSpec (core/spec.py).
 """
 
 from __future__ import annotations
@@ -16,9 +18,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .boards import get_board
-from .config import GameConfig, TrainConfig, get_preset
-from .game import NUM_PLANES, State
+from .config import TrainConfig
+from .spec import spec_of
 
 
 class ResBlock(nn.Module):
@@ -35,19 +36,18 @@ class ResBlock(nn.Module):
         return F.relu(x + y)
 
 
-class BaghNet(nn.Module):
-    def __init__(self, board: str, channels: int = 64, blocks: int = 4):
+class PolicyValueNet(nn.Module):
+    def __init__(self, in_planes: int, cells: int, num_actions: int, channels: int = 64, blocks: int = 4,
+                 board: str | None = None):  # fmt: skip
         super().__init__()
-        geo = get_board(board)
-        cells, points = geo.rows * geo.cols, geo.points
         self.board, self.channels, self.blocks = board, channels, blocks
         self.stem = nn.Sequential(
-            nn.Conv2d(NUM_PLANES, channels, 3, padding=1, bias=False), nn.BatchNorm2d(channels), nn.ReLU()
+            nn.Conv2d(in_planes, channels, 3, padding=1, bias=False), nn.BatchNorm2d(channels), nn.ReLU()
         )
         self.tower = nn.Sequential(*[ResBlock(channels) for _ in range(blocks)])
         self.policy_head = nn.Sequential(
             nn.Conv2d(channels, 4, 1, bias=False), nn.BatchNorm2d(4), nn.ReLU(), nn.Flatten(),
-            nn.Linear(4 * cells, points * points),
+            nn.Linear(4 * cells, num_actions),
         )  # fmt: skip
         self.value_head = nn.Sequential(
             nn.Conv2d(channels, 2, 1, bias=False), nn.BatchNorm2d(2), nn.ReLU(), nn.Flatten(),
@@ -59,21 +59,23 @@ class BaghNet(nn.Module):
         return self.policy_head(h), self.value_head(h).squeeze(-1)
 
 
-def build_net(game: GameConfig, train: TrainConfig) -> BaghNet:
-    return BaghNet(game.board, train.channels, train.blocks)
+def build_net(game, train: TrainConfig) -> PolicyValueNet:
+    spec = spec_of(game)
+    return PolicyValueNet(spec.num_planes, spec.rows * spec.cols, spec.num_actions, train.channels, train.blocks,
+                          spec.board)  # fmt: skip
 
 
 class NetEvaluator:
     """Callable used by MCTS: list of States -> (priors over each state's legal moves, values)."""
 
-    def __init__(self, net: BaghNet, device: torch.device, cuda_graphs: bool = True):
+    def __init__(self, net: PolicyValueNet, device: torch.device, cuda_graphs: bool = True):
         self.net = net.to(device).eval()
         self.device = device
         self.use_graphs = cuda_graphs and device.type == "cuda"
         self.graphs: dict[int, tuple] = {}
 
     @torch.inference_mode()
-    def __call__(self, states: list[State]) -> tuple[list[np.ndarray], np.ndarray]:
+    def __call__(self, states: list) -> tuple[list[np.ndarray], np.ndarray]:
         x = torch.from_numpy(np.stack([s.encode() for s in states])).to(self.device, non_blocking=True)
         logits, values = self._forward(x)
         logits = logits.float().cpu().numpy()
@@ -124,7 +126,7 @@ def default_device() -> torch.device:
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def save_checkpoint(path: Path, net: BaghNet, preset: str, iteration: int) -> None:
+def save_checkpoint(path: Path, net: PolicyValueNet, preset: str, iteration: int) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     torch.save({"net": net.state_dict(), "preset": preset, "board": net.board, "channels": net.channels,
@@ -132,9 +134,11 @@ def save_checkpoint(path: Path, net: BaghNet, preset: str, iteration: int) -> No
     tmp.replace(path)  # atomic: never leaves a half-written checkpoint
 
 
-def load_checkpoint(path: Path, device: torch.device) -> tuple[BaghNet, dict]:
+def load_checkpoint(path: Path, device: torch.device) -> tuple[PolicyValueNet, dict]:
     ckpt = torch.load(path, map_location=device, weights_only=True)
-    get_preset(ckpt["preset"])  # validates the preset still exists
-    net = BaghNet(ckpt["board"], ckpt["channels"], ckpt["blocks"])
+    sd = ckpt["net"]  # the layer shapes tell us the input planes, board cells and number of actions
+    policy_w = sd["policy_head.4.weight"]
+    net = PolicyValueNet(sd["stem.0.weight"].shape[1], policy_w.shape[1] // 4, policy_w.shape[0],
+                         ckpt["channels"], ckpt["blocks"], ckpt.get("board"))  # fmt: skip
     net.load_state_dict(ckpt["net"])
     return net.to(device).eval(), ckpt

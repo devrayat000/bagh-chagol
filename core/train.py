@@ -5,7 +5,7 @@
       2. train      : fit the net to (pi, z) from recent games
                       loss = cross_entropy(pi, policy) + (z - value)^2   (+ weight decay)
       3. arena      : new net vs best net; promote the new one if it scores >= threshold
-      4. evaluate   : vs the greedy baseline (and vs perfect play when the game is solvable)
+      4. evaluate   : vs the game's greedy baseline (and vs perfect play when the game is solvable)
 
 Checkpoints and a CSV log go to checkpoints/<preset>/.
 """
@@ -23,19 +23,20 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from .baselines import GreedyAgent
 from .config import Preset
-from .game import GOAT_SIDE, TIGER_SIDE
 from .mcts import MCTS, MCTSAgent
 from .net import NetEvaluator, build_net, default_device, load_checkpoint, save_checkpoint
 from .selfplay import format_results, play_match, score, self_play
-from .symmetry import symmetries, transform_batch
+from .spec import spec_of
+from .symmetry import transform_batch
 
 CHECKPOINT_DIR = Path("checkpoints")
 
 
 def train(preset_name: str, preset: Preset, resume: bool = False, seed: int = 0) -> None:
     game, tc = preset.game, preset.train
+    spec = spec_of(game)
+    side0, side1 = spec.side_names
     device = default_device()
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
@@ -60,13 +61,11 @@ def train(preset_name: str, preset: Preset, resume: bool = False, seed: int = 0)
     use_amp = device.type == "cuda"
     scaler = torch.amp.GradScaler(device.type, enabled=use_amp)
     buffer: deque = deque(maxlen=tc.buffer_size)
-    syms = symmetries(game.board)
-
-    from .solver import can_solve, get_solver
+    syms = spec.symmetries
 
     perfect_test = None
-    if can_solve(game):  # small enough to solve exactly: measure against perfect play
-        perfect_test = get_solver(game).decisive_positions(limit=1000, seed=seed)
+    if spec.perfect_positions:  # small enough to solve exactly: measure against perfect play
+        perfect_test = spec.perfect_positions(1000, seed)
 
     def make_mcts(model, sims):
         return MCTS(NetEvaluator(model, device), sims, tc.c_puct, tc.dirichlet_alpha, tc.dirichlet_eps,
@@ -78,7 +77,7 @@ def train(preset_name: str, preset: Preset, resume: bool = False, seed: int = 0)
         log = csv.writer(log_file)
         if new_log:
             log.writerow(["iter", "positions", "selfplay", "loss_policy", "loss_value", "arena_score", "promoted",
-                          "tiger_vs_greedy", "goat_vs_greedy", "perfect_move_acc", "seconds"])  # fmt: skip
+                          f"{side0}_vs_greedy", f"{side1}_vs_greedy", "perfect_move_acc", "seconds"])  # fmt: skip
 
         for it in range(start_iter, start_iter + tc.iterations):
             t0 = time.time()
@@ -120,9 +119,9 @@ def train(preset_name: str, preset: Preset, resume: bool = False, seed: int = 0)
                                       seed=int(rng.integers(1 << 31)))  # fmt: skip
                 best_agent = MCTSAgent(make_mcts(best, tc.arena_sims), temperature=1.0, temp_plies=4,
                                        seed=int(rng.integers(1 << 31)))  # fmt: skip
-                as_tiger = play_match(new_agent, best_agent, game, half)
-                as_goat = play_match(best_agent, new_agent, game, half)
-                arena = (score(as_tiger, TIGER_SIDE) + score(as_goat, GOAT_SIDE)) / 2
+                as_first = play_match(new_agent, best_agent, game, half)
+                as_second = play_match(best_agent, new_agent, game, half)
+                arena = (score(as_first, 0) + score(as_second, 1)) / 2
                 promoted = arena >= tc.arena_threshold
             else:
                 arena, promoted = float("nan"), True
@@ -133,19 +132,19 @@ def train(preset_name: str, preset: Preset, resume: bool = False, seed: int = 0)
 
             # 4. Every few iterations: evaluate the best net vs the greedy baseline, playing each side.
             evaluated = it % tc.eval_every == 0 or it == start_iter + tc.iterations - 1
-            eval_text, tiger_score, goat_score = "", "", ""
+            eval_text, score0, score1 = "", "", ""
             if evaluated:
                 agent = MCTSAgent(make_mcts(best, tc.arena_sims))
-                vs_g_tiger = play_match(agent, GreedyAgent(it), game, tc.eval_games)
-                vs_g_goat = play_match(GreedyAgent(it), agent, game, tc.eval_games)
-                tiger_score, goat_score = f"{score(vs_g_tiger, TIGER_SIDE):.3f}", f"{score(vs_g_goat, GOAT_SIDE):.3f}"
-                eval_text = (f" | as tiger vs greedy {format_results(vs_g_tiger)},"
-                             f" as goat vs greedy {format_results(vs_g_goat)}")  # fmt: skip
+                vs_g0 = play_match(agent, spec.make_greedy(it), game, tc.eval_games)
+                vs_g1 = play_match(spec.make_greedy(it), agent, game, tc.eval_games)
+                score0, score1 = f"{score(vs_g0, 0):.3f}", f"{score(vs_g1, 1):.3f}"
+                eval_text = (f" | as {side0} vs greedy {format_results(vs_g0, spec.letters)},"
+                             f" as {side1} vs greedy {format_results(vs_g1, spec.letters)}")  # fmt: skip
             acc = perfect_move_accuracy(best, device, perfect_test) if perfect_test else float("nan")
 
             secs = time.time() - t0
             print(
-                f"[{it:3d}] buf={len(buffer):6d} selfplay={format_results(sp_results)} "
+                f"[{it:3d}] buf={len(buffer):6d} selfplay={format_results(sp_results, spec.letters)} "
                 f"loss_p={loss_p_avg:.3f} loss_v={loss_v_avg:.3f}"
                 + (f" arena={arena:.2f}{' *promoted*' if promoted else ''}" if tc.arena_games else "")
                 + eval_text
@@ -153,8 +152,8 @@ def train(preset_name: str, preset: Preset, resume: bool = False, seed: int = 0)
                 + f" | {secs:.0f}s",
                 flush=True,
             )
-            log.writerow([it, len(buffer), format_results(sp_results), f"{loss_p_avg:.4f}", f"{loss_v_avg:.4f}",
-                          f"{arena:.3f}", int(promoted), tiger_score, goat_score, f"{acc:.4f}", f"{secs:.1f}"])  # fmt: skip
+            log.writerow([it, len(buffer), format_results(sp_results, spec.letters), f"{loss_p_avg:.4f}", f"{loss_v_avg:.4f}",
+                          f"{arena:.3f}", int(promoted), score0, score1, f"{acc:.4f}", f"{secs:.1f}"])  # fmt: skip
             log_file.flush()
 
     print(f"done. best network: {out_dir / 'best.pt'}")

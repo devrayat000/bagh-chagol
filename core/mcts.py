@@ -25,13 +25,13 @@ import math
 
 import numpy as np
 
-from .game import State, outcome
+from .spec import outcome
 
 
 class Node:
     __slots__ = ("state", "prior", "children", "n", "w")
 
-    def __init__(self, prior: float, state: State | None = None):
+    def __init__(self, prior: float, state=None):
         self.state = state  # filled in lazily the first time we visit the node
         self.prior = prior
         self.children: dict[int, Node] | None = None  # None = not expanded yet
@@ -49,7 +49,7 @@ class MCTS:
         self.dirichlet_eps = dirichlet_eps
         self.rng = np.random.default_rng(seed)
 
-    def search(self, states: list[State], add_noise: bool = False) -> tuple[list[np.ndarray], list[float]]:
+    def search(self, states: list, add_noise: bool = False) -> tuple[list[np.ndarray], list[float]]:
         """Search every state. Returns visit counts over all actions, and the root value for the side to move."""
         roots = [Node(1.0, s) for s in states]
         priors, _ = self.evaluator(states)
@@ -76,7 +76,7 @@ class MCTS:
                     self._expand(path[-1], p)
                     self._backup(path, float(v))
 
-        num_actions = states[0].geo.num_actions
+        num_actions = states[0].num_actions
         visits, root_values = [], []
         for root in roots:
             v = np.zeros(num_actions, np.float32)
@@ -132,7 +132,7 @@ class MCTSAgent:
         self.rng = np.random.default_rng(seed)
         self.last_value: float | None = None  # root value of the last searched position (for the UI)
 
-    def act(self, states: list[State]) -> list[int]:
+    def act(self, states: list) -> list[int]:
         visits, values = self.mcts.search(states)
         self.last_value = values[-1]
         return [

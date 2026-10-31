@@ -24,7 +24,7 @@ import torch
 from bagh.boards import get_board
 from bagh.config import PRESETS
 from bagh.game import DRAW, State
-from bagh.net import load_checkpoint
+from core.net import load_checkpoint
 
 ROOT = Path(__file__).parent
 PUBLIC = ROOT / "web" / "public" / "maps"

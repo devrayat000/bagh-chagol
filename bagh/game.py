@@ -22,22 +22,16 @@ from __future__ import annotations
 
 import numpy as np
 
+from core.spec import DRAW, outcome  # noqa: F401  (re-exported: DRAW / outcome are shared by all games)
+
 from .boards import Geometry, get_board
 from .config import GameConfig
 
 EMPTY, TIGER, GOAT = 0, 1, 2
 TIGER_SIDE, GOAT_SIDE = 0, 1
-DRAW = -1
 SIDE_NAMES = {TIGER_SIDE: "tiger", GOAT_SIDE: "goat", DRAW: "draw"}
 
 NUM_PLANES = 7  # see State.encode
-
-
-def outcome(winner: int, side: int) -> float:
-    """Result of a finished game from `side`'s point of view: +1 win, -1 loss, 0 draw."""
-    if winner == DRAW:
-        return 0.0
-    return 1.0 if winner == side else -1.0
 
 
 _UNSET = object()
@@ -120,6 +114,10 @@ class State:
         return self.winner() is not None
 
     # ----- for the neural network --------------------------------------------
+
+    @property
+    def num_actions(self) -> int:
+        return self.geo.num_actions
 
     def encode(self) -> np.ndarray:
         """Feature planes of shape (NUM_PLANES, rows, cols), as the network sees the position.
