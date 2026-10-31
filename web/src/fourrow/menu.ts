@@ -6,13 +6,15 @@ import { crewSound, sfx } from "../sound";
 import { card, text, UI, type Rect } from "../ui";
 import { drawDay, drawDisc, FR } from "./art";
 import type { FourRowPlayArgs } from "./play";
-import { drawHelp, drawTitle, drawTopBar } from "./widgets";
+import { fourRowRulebook } from "./rulebook";
+import { drawTitle, drawTopBar } from "./widgets";
 
 export function fourRowMenuScene(entry: FourRowEntry, settings: FourRowSettings, ai: AiClient) {
   const ui = new UI({ crewCursor: true });
   const jump = new Map<Avatar, number>(); // time each avatar was last clicked, for a little hop
   let starting = false;
-  let help = 0, helpOpen = false;
+  // The rulebook shows your crew member on red or yellow, as picked below.
+  const book = fourRowRulebook(entry.def, () => (settings.side === 0 ? [settings.avatar, AI_AVATARS[settings.difficulty]] : [AI_AVATARS[settings.difficulty], settings.avatar]));
 
   async function start() {
     if (starting) return;
@@ -34,9 +36,9 @@ export function fourRowMenuScene(entry: FourRowEntry, settings: FourRowSettings,
   k.onMousePress((btn) => {
     if (btn === "left") ui.click(k.mousePos().x, k.mousePos().y);
   });
-  k.onKeyPress("enter", () => void start());
-  k.onKeyPress("escape", () => (helpOpen ? (helpOpen = false) : k.go("home")));
-  k.onUpdate(() => (help = Math.max(0, Math.min(1, help + (helpOpen ? 1 : -1) * k.dt() * 5))));
+  k.onKeyPress("enter", () => !book.isOpen && void start());
+  k.onKeyPress("escape", () => (book.isOpen ? book.close() : k.go("home")));
+  k.onUpdate(() => book.update(k.dt()));
 
   k.onDraw(() => {
     ui.beginFrame();
@@ -44,7 +46,7 @@ export function fourRowMenuScene(entry: FourRowEntry, settings: FourRowSettings,
     drawDay(w, h);
     const top = drawTopBar(ui, {
       back: { tooltip: "All games", onClick: () => k.go("home") },
-      onHelp: () => (helpOpen = true),
+      onHelp: () => book.show(),
       shareText: "Can you beat the crew at Four in a Row?",
     });
 
@@ -111,7 +113,7 @@ export function fourRowMenuScene(entry: FourRowEntry, settings: FourRowSettings,
     const status = entry.def.trained ? `Trained AI · self-play iteration ${entry.def.iteration}` : "The AI's network is still training: it plays by search only";
     text(status, w / 2, y + 76, { size: 14, color: FR.ink, anchor: "top", opacity: 0.75 });
 
-    if (help > 0) drawHelp(ui, help, () => (helpOpen = false));
+    book.draw(ui);
     ui.endFrame();
   });
 

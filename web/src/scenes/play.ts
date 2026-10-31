@@ -9,6 +9,7 @@ import type { MapEntry } from "../maps";
 import { Game, GOAT, GOAT_SIDE, State, TIGER, TIGER_SIDE, type Side } from "../rules";
 import { sfx, soundOn, toggleSound } from "../sound";
 import { card, text, UI, type Rect } from "../ui";
+import { baghRulebook } from "./baghRulebook";
 
 export interface PlayArgs {
   entry: MapEntry;
@@ -62,6 +63,7 @@ export function playScene({ entry, human, difficulty, ai }: PlayArgs) {
   let overlay = 0; // game-over overlay fade-in, 0..1
   let resultSoundPlayed = false;
   let layout = computeLayout();
+  const book = baghRulebook(() => entry.def);
 
   function computeLayout(): Layout {
     const w = k.width(), h = k.height();
@@ -104,7 +106,7 @@ export function playScene({ entry, human, difficulty, ai }: PlayArgs) {
     });
   }
 
-  const humanTurn = () => !busy && !thinking && !state.isTerminal() && state.toPlay === human;
+  const humanTurn = () => !busy && !thinking && !state.isTerminal() && state.toPlay === human && !book.isOpen;
 
   function movesFrom(p: number) {
     return state.legalActions().filter((a) => Math.floor(a / P_) === p);
@@ -240,14 +242,15 @@ export function playScene({ entry, human, difficulty, ai }: PlayArgs) {
     selected = null;
   });
 
-  k.onKeyPress("u", undo);
-  k.onKeyPress("r", restart);
-  k.onKeyPress("escape", () => (selected = null));
+  k.onKeyPress("u", () => !book.isOpen && undo());
+  k.onKeyPress("r", () => !book.isOpen && restart());
+  k.onKeyPress("escape", () => (book.isOpen ? book.close() : (selected = null)));
   k.onResize(() => (layout = computeLayout()));
 
   k.onUpdate(() => {
     const dt = k.dt();
     layout = computeLayout();
+    book.update(dt);
     particles.update(dt, radius());
     shownValue += (aiValue - shownValue) * Math.min(1, dt * 4);
     const hovered = humanTurn() ? pointAt(k.mousePos()) : null;
@@ -282,6 +285,7 @@ export function playScene({ entry, human, difficulty, ai }: PlayArgs) {
     particles.draw();
     drawPanel();
     if (overlay > 0) drawGameOver();
+    book.draw(ui);
     ui.endFrame();
   });
 
@@ -392,19 +396,22 @@ export function playScene({ entry, human, difficulty, ai }: PlayArgs) {
         text("This map's network is still training: the AI uses search only.", x, y, { size: 13, color: "#d49a7a", width: wIn });
         y += 38;
       }
-      const logBottom = R.y + R.h - pad * 0.8 - 2 * 42 - 10 - 14;
+      const logBottom = R.y + R.h - pad * 0.8 - 3 * 42 - 2 * 10 - 14;
       drawMoveLog({ x, y: y + 6, w: wIn, h: logBottom - y - 6 });
     }
 
     // Buttons along the bottom.
+    // Buttons along the bottom: the rulebook gets a full row of its own on wide screens.
     const bh = compact ? 38 : 42, gap = 10;
-    const by = R.y + R.h - pad * 0.8 - (compact ? bh : 2 * bh + gap);
-    const cols = compact ? 4 : 2;
+    const by = R.y + R.h - pad * 0.8 - (compact ? bh : 3 * bh + 2 * gap);
+    if (!compact) ui.button({ x, y: by, w: wIn, h: bh }, { label: "Rulebook", sprite: "crew-marks_legend-o", onClick: () => book.show(), size: 18 });
+    const cols = compact ? 5 : 2;
     const bw = (wIn - gap * (cols - 1)) / cols;
     const btn = (i: number, label: string, onClick: () => void, disabled = false) => {
-      const row = Math.floor(i / cols), c = i % cols;
-      ui.button({ x: x + c * (bw + gap), y: by + row * (bh + gap), w: bw, h: bh }, { label, onClick, disabled, size: compact ? 16 : 18 });
+      const row = Math.floor(i / cols) + (compact ? 0 : 1), c = i % cols;
+      ui.button({ x: x + c * (bw + gap), y: by + row * (bh + gap), w: bw, h: bh }, { label, onClick, disabled, size: compact ? 14 : 18 });
     };
+    if (compact) btn(4, "Rules", () => book.show());
     btn(0, "Undo", undo, !history.length || busy);
     btn(1, "Restart", restart);
     btn(2, "Menu", () => {
@@ -412,7 +419,7 @@ export function playScene({ entry, human, difficulty, ai }: PlayArgs) {
       ai.cancelAll();
       k.go("menu");
     });
-    btn(3, soundOn ? "Sound on" : "Sound off", toggleSound);
+    btn(3, compact ? (soundOn ? "Sound" : "Muted") : soundOn ? "Sound on" : "Sound off", toggleSound);
   }
 
   /** The game so far, newest at the bottom, in the board's own point names. */

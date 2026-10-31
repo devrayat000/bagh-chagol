@@ -22,9 +22,9 @@ export const AVATAR_NAMES: Record<Avatar, string> = {
 export const AVATAR_VOICE: Partial<Record<Avatar, string>> = { bean: "crew-bean_voice", mark: "crew-mark_voice" };
 
 const UI_ICONS = ["play", "share", "cross_mark", "check_mark", "arrow", "home",
-                  "question_mark", "sounds", "history", "trash", "like", "menu"] as const; // prettier-ignore
+                  "question_mark", "sounds", "history", "trash", "like", "menu", "marks_legend"] as const; // prettier-ignore
 const DECOR = ["sparkles", "star", "heart", "cloud", "sun", "grass", "flowy", "btfly", "coin", "sparkle"] as const;
-const EMOJIS = ["beenking", "pog", "been", "beant", "firing", "sparkling"] as const;
+const EMOJIS = ["beenking", "pog", "been", "beant", "firing", "sparkling", "wizarding"] as const;
 
 export function loadCrewAssets() {
   for (const name of [...UI_ICONS, ...DECOR, ...EMOJIS, ...AVATARS, ...Object.values(AI_AVATARS)]) {

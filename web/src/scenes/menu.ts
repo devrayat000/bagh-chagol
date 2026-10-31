@@ -7,6 +7,7 @@ import { Fireflies } from "../fx";
 import { saveSettings, type MapEntry, type Settings } from "../maps";
 import { GOAT_SIDE, TIGER_SIDE, type Side } from "../rules";
 import { card, text, UI, type Rect } from "../ui";
+import { baghRulebook } from "./baghRulebook";
 import type { PlayArgs } from "./play";
 
 export function menuScene(maps: MapEntry[], settings: Settings, ai: AiClient) {
@@ -16,6 +17,7 @@ export function menuScene(maps: MapEntry[], settings: Settings, ai: AiClient) {
   let starting = false;
 
   const current = () => maps.find((m) => m.def.id === settings.mapId) ?? maps[0];
+  const book = baghRulebook(() => current().def); // explains the rules on the map you picked
 
   async function start() {
     if (starting) return;
@@ -30,8 +32,9 @@ export function menuScene(maps: MapEntry[], settings: Settings, ai: AiClient) {
   k.onMousePress((btn) => {
     if (btn === "left") ui.click(k.mousePos().x, k.mousePos().y);
   });
-  k.onKeyPress("enter", start);
-  k.onKeyPress("escape", () => k.go("home"));
+  k.onKeyPress("enter", () => !book.isOpen && start());
+  k.onKeyPress("escape", () => (book.isOpen ? book.close() : k.go("home")));
+  k.onUpdate(() => book.update(k.dt()));
 
   k.onDraw(() => {
     ui.beginFrame();
@@ -109,6 +112,8 @@ export function menuScene(maps: MapEntry[], settings: Settings, ai: AiClient) {
       ui.button({ x: gx, y: y + 164, w: gw, h: 56 }, { label: starting ? "Loading…" : "Play", style: "primary", size: 24, onClick: start });
     }
     ui.iconButton({ x: 14, y: 14, w: 46, h: 46 }, "crew-arrow", () => k.go("home"), { tooltip: "All games", flip: true });
+    ui.iconButton({ x: w - 60, y: 14, w: 46, h: 46 }, "crew-marks_legend", () => book.show(), { tooltip: "Rulebook" });
+    book.draw(ui);
     ui.endFrame();
   });
 

@@ -9,7 +9,8 @@ import { crewSound, sfx } from "../sound";
 import { card, text, UI, type Rect } from "../ui";
 import { cellCenter, drawBoardBack, drawBoardFront, drawDay, drawDisc, FR, holeRadius, pad, sideName, type BoardGeom } from "./art";
 import { FourRowState, type Side } from "./rules";
-import { CrewParticles, drawHelp, drawTitle, drawTopBar } from "./widgets";
+import { fourRowRulebook } from "./rulebook";
+import { CrewParticles, drawTitle, drawTopBar } from "./widgets";
 
 export interface FourRowPlayArgs {
   entry: FourRowEntry;
@@ -54,7 +55,7 @@ export function fourRowPlayScene({ entry, avatar, human, difficulty, ai }: FourR
   let hoverCol: number | null = null;
   let glow = 0;
   let overlay = 0, overlayOpen = false, overlayClosed = false;
-  let help = 0, helpOpen = false;
+  const book = fourRowRulebook(def, () => [avatarOf(0), avatarOf(1)]);
   let resultShown = false;
   let layout = computeLayout();
 
@@ -80,7 +81,7 @@ export function fourRowPlayScene({ entry, avatar, human, difficulty, ai }: FourR
     return { g: { x: (w - bw) / 2, y: y0, cell, rows: def.rows, cols: def.cols }, panel: { x: (w - pw) / 2, y: h - ph - m, w: pw, h: ph }, portrait: true };
   }
 
-  const humanTurn = () => !drop && !thinking && !state.isTerminal() && state.toPlay === human && !helpOpen;
+  const humanTurn = () => !drop && !thinking && !state.isTerminal() && state.toPlay === human && !book.isOpen;
 
   /** The column under a screen position (anywhere from the row above the board to its bottom). */
   function columnAt(p: Vec2): number | null {
@@ -225,7 +226,7 @@ export function fourRowPlayScene({ entry, avatar, human, difficulty, ai }: FourR
   for (let c = 0; c < Math.min(def.cols, 9); c++) k.onKeyPress(String(c + 1) as "1", () => humanTurn() && void play(c));
   k.onKeyPress("u", undo);
   k.onKeyPress("r", restart);
-  k.onKeyPress("escape", () => (helpOpen ? (helpOpen = false) : overlayOpen ? closeOverlay() : toMenu()));
+  k.onKeyPress("escape", () => (book.isOpen ? book.close() : overlayOpen ? closeOverlay() : toMenu()));
   k.onResize(() => (layout = computeLayout()));
 
   function closeOverlay() {
@@ -239,7 +240,7 @@ export function fourRowPlayScene({ entry, avatar, human, difficulty, ai }: FourR
     sparkles.update(dt);
     confetti.update(dt, layout.g.cell * 0.5);
     shownValue += (aiValue - shownValue) * Math.min(1, dt * 4);
-    help = Math.max(0, Math.min(1, help + (helpOpen ? 1 : -1) * dt * 5));
+    book.update(dt);
     overlay = Math.max(0, Math.min(1, overlay + (overlayOpen ? 1 : -1) * dt * 3));
     const c = humanTurn() ? columnAt(k.mousePos()) : null;
     if (c !== hoverCol && c !== null && state.legalActions().includes(c)) sfx.tick();
@@ -258,11 +259,11 @@ export function fourRowPlayScene({ entry, avatar, human, difficulty, ai }: FourR
     drawPanel();
     drawTopBar(ui, {
       back: { tooltip: "Menu", onClick: toMenu, sprite: "crew-menu" },
-      onHelp: () => (helpOpen = true),
+      onHelp: () => book.show(),
       shareText: shareText(),
     });
     if (overlay > 0) drawGameOver();
-    if (help > 0) drawHelp(ui, help, () => (helpOpen = false));
+    book.draw(ui);
     ui.endFrame();
   });
 

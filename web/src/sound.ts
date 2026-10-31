@@ -74,6 +74,11 @@ export const sfx = {
     noise(0.05, 0.7, 2600 - depth * 180);
     tone(520 - depth * 40, 0.08, "triangle", 0.1, 0, 300 - depth * 20);
   },
+  /** A page of the rulebook turning: a papery swish. */
+  page: () => {
+    noise(0.16, 0.35, 3200);
+    noise(0.1, 0.2, 1400, 0.05);
+  },
   /** Hovering over a new column. */
   tick: () => tone(1200, 0.025, "sine", 0.025),
 };
