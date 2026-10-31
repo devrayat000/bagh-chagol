@@ -1,3 +1,4 @@
+import { crew } from "@kaplayjs/crew";
 import kaplay, { type Color } from "kaplay";
 
 /** The one kaplay instance. No fixed size: the canvas fills the window and every scene lays itself out. */
@@ -10,6 +11,7 @@ export const k = kaplay({
   touchToMouse: true,
   maxFPS: 60,
   burp: false,
+  plugins: [crew],
 });
 
 const colors = new Map<string, Color>();
