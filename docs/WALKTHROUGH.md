@@ -331,6 +331,47 @@ find. The default preset uses `captures_to_win=3`, `max_plies=60`. Change those 
 **To add your own board**, write a function like `hourglass()` with point
 positions, lines and labels, register it in `BOARDS`, and add a preset.
 
+## Step 8: the web game (`export_web.py`, `web/`)
+
+The browser game is a kaplay project in `web/`. Python stays the training lab;
+the browser only gets its results:
+
+```
+uv run --group web export_web.py   # after training: networks + board files -> web/
+cd web
+bun install
+bun run dev                        # http://localhost:3001
+bun run test                       # TypeScript rules vs Python answers
+bun run build                      # static site in web/dist/
+```
+
+**What is exported.** For each preset, `export_web.py` writes `game.json` (points,
+lines, step/jump tables, start position, rules) and `model.onnx` (the trained
+network, converted from PyTorch with `torch.onnx.export` and checked against
+PyTorch with onnxruntime). It also writes test fixtures: random positions with
+Python's legal moves, winner, input planes and network output.
+
+**Why the fixtures matter.** The rules exist twice now: `bagh/game.py` and
+`web/src/rules.ts`. If the TypeScript `encode()` differed by even one plane,
+the network would see inputs it never trained on and play badly, with no error
+anywhere. `web/tests/rules.test.ts` replays every fixture and checks the moves,
+the winner, all input planes, and that the ONNX network in JavaScript gives the
+same output as PyTorch.
+
+**The AI in the browser** (`web/src/ai/`) is the same MCTS as `bagh/mcts.py`,
+running in a Web Worker so the game never freezes while it thinks. The network
+runs with onnxruntime-web (WebAssembly). Difficulty = number of simulations
+plus a sampling temperature (Easy: 12 sims and noticeably random, Hard: 400
+sims and always the best move). A map without a trained network falls back to
+MCTS with quick random playouts.
+
+**Drawing** is all kaplay draw calls, every frame: `web/src/art/board.ts` draws
+the board as a nakshi-kantha cloth (lines in running stitches, rosettes on the
+points), `scenery.ts` the moonlit village. The pieces are SVG token art loaded
+with `loadSprite`. The one exception is the Bengali title: kaplay rasterises
+text one character at a time, which breaks Bengali vowel signs, so the title is
+an image made once by `bun scripts/make-title.mjs`.
+
 ## Ideas for later
 
 - **Placement phase:** goats enter the board one per turn, as in many village

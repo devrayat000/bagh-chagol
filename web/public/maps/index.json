@@ -1,0 +1,22 @@
+[
+ {
+  "id": "hourglass",
+  "trained": true,
+  "iteration": 25
+ },
+ {
+  "id": "tiny",
+  "trained": true,
+  "iteration": 15
+ },
+ {
+  "id": "small",
+  "trained": true,
+  "iteration": 10
+ },
+ {
+  "id": "full",
+  "trained": false,
+  "iteration": 0
+ }
+]

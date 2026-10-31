@@ -16,6 +16,9 @@ uv run main.py play  --preset hourglass
 uv run main.py train --preset small        # 5x5, ~1.5 h
 ```
 
+**Web game:** a kaplay version you can play in the browser lives in [`web/`](web/README.md).
+Export trained networks to it with `uv run --group web export_web.py`.
+
 Presets (`bagh/config.py`):
 
 | preset | board | pieces | first move | tiger wins after | perfect play |
