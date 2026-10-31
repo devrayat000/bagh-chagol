@@ -1,0 +1,28 @@
+[project]
+name = "bagh-chagol"
+version = "0.1.0"
+description = "AlphaZero-style RL agent for the Bengali hunt game Bagh-Chagol (বাঘ-ছাগল)"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "numpy>=2.5.4",
+    "pygame-ce>=2.5.8",
+    "torch>=2.9.0",
+]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu126" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
