@@ -3,8 +3,9 @@
 //     bun run preview --port 4173     (in another terminal, after `bun run build`)
 //     bun scripts/make-share-images.mjs [http://localhost:4173/]
 //
-// Icons reuse the tiger token from the game; og-image.png (1200x630, the size
-// Facebook/X/WhatsApp/LinkedIn expect) is a screenshot of the real menu.
+// Icons reuse the tiger token from the game. The share images (1200x630, the size
+// Facebook/X/WhatsApp/LinkedIn expect) are screenshots of each page's real screen:
+// og-image.png (pick a game), og-bagh-chagol.png and og-four-in-a-row.png (the menus).
 
 import { existsSync, writeFileSync } from "node:fs";
 import { chromium } from "playwright-core";
@@ -34,11 +35,18 @@ for (const [file, size, inset] of [["apple-touch-icon.png", 180, 0.1], ["icon-19
   await page.close();
 }
 
-// Share image: the game's own menu at 1200x630.
-const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
-await page.addInitScript(() => localStorage.setItem("bagh.settings", JSON.stringify({ mapId: "hourglass", side: 1, difficulty: "medium" })));
-await page.goto(url);
-await page.waitForTimeout(3000);
-await page.screenshot({ path: out("og-image.png") });
+// Share images: each page's own first screen at 1200x630.
+for (const [path, file] of [["", "og-image.png"], ["bagh-chagol/", "og-bagh-chagol.png"], ["four-in-a-row/", "og-four-in-a-row.png"]]) {
+  const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
+  await page.addInitScript(() => {
+    localStorage.setItem("bagh.settings", JSON.stringify({ mapId: "hourglass", side: 1, difficulty: "medium" }));
+    localStorage.setItem("fourrow.settings", JSON.stringify({ avatar: "bean", side: 0, difficulty: "medium" }));
+  });
+  await page.goto(new URL(path, url).href);
+  await page.mouse.move(1199, 629); // keep the cursor out of the way
+  await page.waitForTimeout(3000);
+  await page.screenshot({ path: out(file) });
+  await page.close();
+}
 await browser.close();
-console.log("wrote favicon.svg, apple-touch-icon.png, icon-192.png, icon-512.png, icon-maskable-512.png, og-image.png");
+console.log("wrote favicon.svg, the app icons, og-image.png, og-bagh-chagol.png and og-four-in-a-row.png");

@@ -7,11 +7,9 @@ import { loadFourRow, loadFourRowSettings, loadMaps, loadSettings } from "./maps
 import { homeScene } from "./scenes/home";
 import { menuScene } from "./scenes/menu";
 import { playScene, type PlayArgs } from "./scenes/play";
+import { pageFromHash, showPage, startPage, type Page } from "./site";
 
-/** The address bar follows the game you're in, so a shared or reloaded link opens it again. */
-function setHash(hash: string) {
-  history.replaceState(null, "", hash ? `#${hash}` : location.pathname + location.search);
-}
+const SCENE: Record<Page, string> = { home: "home", bagh: "menu", fourrow: "fourrow-menu" };
 
 async function main() {
   loadAssets();
@@ -20,17 +18,20 @@ async function main() {
   const fourRowSettings = loadFourRowSettings();
   const ai = new AiClient();
 
-  k.scene("home", () => (setHash(""), homeScene(fourRow.def)));
-  k.scene("menu", () => (setHash("bagh"), menuScene(maps, settings, ai)));
-  k.scene("play", (args: PlayArgs) => (setHash("bagh"), playScene(args)));
-  k.scene("fourrow-menu", () => (setHash("fourrow"), fourRowMenuScene(fourRow, fourRowSettings, ai)));
-  k.scene("fourrow-play", (args: FourRowPlayArgs) => (setHash("fourrow"), fourRowPlayScene(args)));
+  // Every scene puts its game's own address in the address bar (/, /bagh-chagol/, /four-in-a-row/).
+  k.scene("home", () => (showPage("home"), homeScene(fourRow.def)));
+  k.scene("menu", () => (showPage("bagh"), menuScene(maps, settings, ai)));
+  k.scene("play", (args: PlayArgs) => (showPage("bagh"), playScene(args)));
+  k.scene("fourrow-menu", () => (showPage("fourrow"), fourRowMenuScene(fourRow, fourRowSettings, ai)));
+  k.scene("fourrow-play", (args: FourRowPlayArgs) => (showPage("fourrow"), fourRowPlayScene(args)));
 
-  const sceneFor = () => ({ "#bagh": "menu", "#fourrow": "fourrow-menu" })[location.hash] ?? "home";
   k.onLoad(() => {
-    k.go(sceneFor());
-    // A link to the other game pasted into the address bar, or the browser's back button.
-    window.addEventListener("hashchange", () => k.go(sceneFor()));
+    k.go(SCENE[pageFromHash() ?? startPage]);
+    // An old #bagh / #fourrow link pasted into the address bar.
+    window.addEventListener("hashchange", () => {
+      const page = pageFromHash();
+      if (page) k.go(SCENE[page]);
+    });
   });
 }
 

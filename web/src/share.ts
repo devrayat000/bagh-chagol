@@ -1,15 +1,11 @@
 // Sharing a link to the game: the system share sheet where there is one
 // (phones), otherwise copy the link to the clipboard and say so.
 
+import { pageUrl, type Page } from "./site";
 import { toast } from "./ui";
 
-/** The game's address, opening on `hash` (e.g. "fourrow"). */
-export function gameUrl(hash = ""): string {
-  return location.origin + location.pathname + (hash ? `#${hash}` : "");
-}
-
-export async function share(title: string, text: string, hash = "") {
-  const url = gameUrl(hash);
+export async function share(title: string, text: string, page: Page = "home") {
+  const url = pageUrl(page);
   if (navigator.share) {
     try {
       await navigator.share({ title, text, url });

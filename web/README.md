@@ -15,16 +15,23 @@ bun run build    # static site in dist/ (works from any folder, e.g. GitHub Page
 
 ## Publishing (SEO and link previews)
 
+Each game has its own page, so search engines and link previews can show it on its own:
+`/` (pick a game), `/bagh-chagol/` and `/four-in-a-row/`. They are three HTML files
+(`index.html`, `bagh-chagol/index.html`, `four-in-a-row/index.html`) running the same
+game; `<meta name="app-start">` says which screen to open. Old `#bagh` / `#fourrow`
+links still work.
+
 Build with the address the site will live at, so link previews and search engines get
-absolute URLs (canonical link, `og:url`, `og:image`, `robots.txt`, `sitemap.xml`):
+absolute URLs (canonical links, `og:url`, `og:image`, `robots.txt`, `sitemap.xml` with
+all three pages):
 
 ```sh
 SITE_URL=https://you.github.io/bagh-chagol/ bun run build
 ```
 
-The icons and the share image (`public/og-image.png`, 1200x630, a screenshot of the
-menu) are made by `bun scripts/make-share-images.mjs` while `bun run preview --port 4173`
-is running. Re-run it after visual changes to the menu.
+The icons and the share images (1200x630 screenshots of each page: `public/og-image.png`,
+`og-bagh-chagol.png`, `og-four-in-a-row.png`) are made by `bun scripts/make-share-images.mjs`
+while `bun run preview --port 4173` is running. Re-run it after visual changes to the menus.
 
 After training a network in the parent project, export it:
 

@@ -108,7 +108,7 @@ export function menuScene(maps: MapEntry[], settings: Settings, ai: AiClient) {
       diffBtns(gx, y + 106, gw);
       ui.button({ x: gx, y: y + 164, w: gw, h: 56 }, { label: starting ? "Loading…" : "Play", style: "primary", size: 24, onClick: start });
     }
-    ui.iconButton({ x: 14, y: 14, w: 46, h: 46 }, "crew-home", () => k.go("home"), { tooltip: "All games" });
+    ui.iconButton({ x: 14, y: 14, w: 46, h: 46 }, "crew-arrow", () => k.go("home"), { tooltip: "All games", flip: true });
     ui.endFrame();
   });
 

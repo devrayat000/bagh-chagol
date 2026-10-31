@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
 const kaplayCongrats = () => {
@@ -19,12 +20,20 @@ const SITE_URL = process.env.SITE_URL
   ? process.env.SITE_URL.replace(/\/?$/, "/")
   : "";
 
+// The site's pages: each game has its own address, title and share image (see src/site.ts).
+const PAGES = { main: "index.html", bagh: "bagh-chagol/index.html", fourrow: "four-in-a-row/index.html" };
+const pagePath = (file) => file.replace(/index\.html$/, ""); // "four-in-a-row/index.html" -> "four-in-a-row/"
+
 const seo = () => ({
   name: "bagh-seo",
-  transformIndexHtml(html) {
-    html = html.replaceAll("%SITE%", SITE_URL || "./");
+  transformIndexHtml(html, ctx) {
+    const path = pagePath(ctx.path.replace(/^\//, ""));
+    const depth = path.split("/").length - 1;
+    // Without SITE_URL, fall back to relative URLs from this page to the site root.
+    html = html.replaceAll("%SITE%", SITE_URL || "../".repeat(depth) || "./");
     if (!SITE_URL) return html;
-    const tags = `<link rel="canonical" href="${SITE_URL}" />\n    <meta property="og:url" content="${SITE_URL}" />\n`;
+    const url = SITE_URL + path;
+    const tags = `<link rel="canonical" href="${url}" />\n    <meta property="og:url" content="${url}" />\n`;
     return html.replace("</head>", `    ${tags}  </head>`);
   },
   generateBundle() {
@@ -33,7 +42,11 @@ const seo = () => ({
       (SITE_URL ? `\nSitemap: ${SITE_URL}sitemap.xml\n` : "");
     this.emitFile({ type: "asset", fileName: "robots.txt", source: robots });
     if (SITE_URL) {
-      const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${SITE_URL}</loc><lastmod>${new Date().toISOString().slice(0, 10)}</lastmod></url>\n</urlset>\n`;
+      const today = new Date().toISOString().slice(0, 10);
+      const urls = Object.values(PAGES)
+        .map((file) => `  <url><loc>${SITE_URL}${pagePath(file)}</loc><lastmod>${today}</lastmod></url>`)
+        .join("\n");
+      const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
       this.emitFile({
         type: "asset",
         fileName: "sitemap.xml",
@@ -57,6 +70,7 @@ export default defineConfig({
     // disable this for low bundle sizes
     sourcemap: true,
     rollupOptions: {
+      input: Object.fromEntries(Object.entries(PAGES).map(([name, file]) => [name, fileURLToPath(new URL(file, import.meta.url))])),
       output: {
         // Vite 8 (Rolldown) only accepts the function form
         manualChunks: (id) =>

@@ -1,7 +1,7 @@
 {
-  "name": "বাঘ-ছাগল · Bagh-Chagol",
-  "short_name": "Bagh-Chagol",
-  "description": "The traditional Bengali tiger-and-goats board game, against a self-taught AI.",
+  "name": "বাঘ-ছাগল & Four in a Row",
+  "short_name": "Board Games",
+  "description": "Bagh-Chagol, the Bengali tiger-and-goats game, and Four in a Row, against a self-taught AI.",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
@@ -9,6 +9,10 @@
   "background_color": "#14122b",
   "theme_color": "#14122b",
   "categories": ["games", "entertainment"],
+  "shortcuts": [
+    { "name": "Bagh-Chagol", "url": "./bagh-chagol/" },
+    { "name": "Four in a Row", "url": "./four-in-a-row/" }
+  ],
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },

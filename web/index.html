@@ -2,17 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#14122b" />
     <meta name="color-scheme" content="dark" />
+    <!-- Which game this page opens, and where the site root is (see src/site.ts). -->
+    <meta name="app-start" content="home" />
+    <meta name="app-root" content="./" />
 
     <!-- Search -->
-    <title>বাঘ-ছাগল (Bagh-Chagol) · Play the Tiger and Goats Board Game Online</title>
+    <title>বাঘ-ছাগল (Bagh-Chagol) & Four in a Row · Board Games vs AI</title>
     <meta
       name="description"
-      content="Play বাঘ-ছাগল (Bagh-Chagol), the traditional Bengali tiger-and-goats hunt game, free in your browser. Play as the tiger or the goats against an AI trained by self-play, on four boards including the 13-point hourglass board."
+      content="Play two board games free in your browser against an AI that taught itself by self-play: বাঘ-ছাগল (Bagh-Chagol), the Bengali tiger-and-goats hunt game, and Four in a Row."
     />
-    <meta name="keywords" content="Bagh-Chagol, বাঘ-ছাগল, Bagh Chal, tiger and goats, hunt game, Bengali board game, Bangladesh board game, traditional board game, alquerque, AlphaZero, online board game" />
     <meta name="author" content="Zul Ikram Musaddik Rayat" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <!-- canonical link and og:url are added at build time when SITE_URL is set (see vite.config.js) -->
@@ -25,41 +27,45 @@
 
     <!-- Social previews (Facebook, WhatsApp, Messenger, LinkedIn, Discord, ...) -->
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="বাঘ-ছাগল · Bagh-Chagol" />
-    <meta property="og:title" content="বাঘ-ছাগল (Bagh-Chagol): can your goats trap the tiger?" />
-    <meta property="og:description" content="The traditional Bengali tiger-and-goats board game, in your browser. Play either side against an AI that learned the game by playing itself." />
+    <meta property="og:site_name" content="Bagh-Chagol & Four in a Row" />
+    <meta property="og:title" content="Bagh-Chagol & Four in a Row: can you beat a self-taught AI?" />
+    <meta property="og:description" content="Two board games in your browser, against an AI that learned by playing itself: the Bengali tiger-and-goats hunt game, and Four in a Row with the KAPLAY crew." />
     <meta property="og:image" content="%SITE%og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="The Bagh-Chagol game menu: four boards drawn as embroidered kantha cloth with tiger and goat pieces, under a moonlit village sky." />
+    <meta property="og:image:alt" content="Pick a game: Bagh-Chagol, with its tiger and goat pieces, or Four in a Row, with a purple board and crew-faced discs." />
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="bn_BD" />
 
     <!-- X / Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="বাঘ-ছাগল (Bagh-Chagol): can your goats trap the tiger?" />
-    <meta name="twitter:description" content="The traditional Bengali tiger-and-goats board game. Play either side against a self-taught AI, free in your browser." />
+    <meta name="twitter:title" content="Bagh-Chagol & Four in a Row: can you beat a self-taught AI?" />
+    <meta name="twitter:description" content="Two free board games in your browser against an AI that learned by playing itself." />
     <meta name="twitter:image" content="%SITE%og-image.png" />
-    <meta name="twitter:image:alt" content="The Bagh-Chagol game menu with four embroidered boards and tiger and goat pieces." />
+    <meta name="twitter:image:alt" content="The game picker: Bagh-Chagol and Four in a Row." />
 
     <!-- Structured data for search engines -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "VideoGame",
-        "name": "বাঘ-ছাগল (Bagh-Chagol)",
-        "alternateName": ["Bagh-Chagol", "Bagh Chagol", "Tiger and Goats"],
-        "description": "The traditional Bengali tiger-and-goats hunt game. One tiger tries to capture goats by jumping over them; the goats try to trap the tiger. Play either side against an AI trained by self-play (AlphaZero-style), on four boards.",
-        "genre": ["Board game", "Strategy", "Abstract strategy"],
-        "gamePlatform": "Web browser",
-        "applicationCategory": "Game",
-        "operatingSystem": "Any",
-        "playMode": "SinglePlayer",
-        "inLanguage": "en",
-        "isAccessibleForFree": true,
-        "image": "%SITE%og-image.png",
-        "author": { "@type": "Person", "name": "Zul Ikram Musaddik Rayat" },
-        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "%SITE%#website",
+            "name": "Bagh-Chagol & Four in a Row",
+            "url": "%SITE%",
+            "inLanguage": "en",
+            "author": { "@type": "Person", "name": "Zul Ikram Musaddik Rayat" }
+          },
+          {
+            "@type": "ItemList",
+            "name": "Board games against a self-taught AI",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "url": "%SITE%bagh-chagol/", "name": "বাঘ-ছাগল (Bagh-Chagol)" },
+              { "@type": "ListItem", "position": 2, "url": "%SITE%four-in-a-row/", "name": "Four in a Row" }
+            ]
+          }
+        ]
       }
     </script>
 
@@ -69,32 +75,33 @@
       /* Readable by search engines and screen readers, hidden behind the game. */
       .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
       noscript p { color: #f6ead2; font: 18px/1.5 sans-serif; text-align: center; padding: 40px 20px; }
+      noscript a { color: #f2c14e; }
     </style>
   </head>
   <body>
     <!-- The game draws everything on a canvas, so describe it in text for crawlers and screen readers. -->
     <main class="sr-only">
-      <h1>বাঘ-ছাগল (Bagh-Chagol): the tiger and goats board game</h1>
+      <h1>Board games against an AI that taught itself</h1>
       <p>
-        Bagh-Chagol is a traditional hunt game from rural Bengal. One side plays the tiger, the other a herd of goats.
-        The tiger moves along the lines of the board and captures a goat by jumping over it onto the empty point behind.
-        The goats cannot capture: they win by surrounding the tiger so it has no legal move.
+        Two board games you can play free in your browser. Each computer opponent was trained with self-play
+        reinforcement learning in the style of AlphaZero: a neural network and Monte Carlo tree search that learned
+        only from games against itself. The AI runs on your own device; nothing is sent to a server.
       </p>
-      <h2>Play against an AI that taught itself</h2>
+      <h2><a href="./bagh-chagol/">বাঘ-ছাগল (Bagh-Chagol): the tiger and goats game</a></h2>
       <p>
-        The computer opponent was trained with self-play reinforcement learning in the style of AlphaZero: a neural
-        network and Monte Carlo tree search, learning only from games against itself. It runs entirely in your browser.
-        Choose easy, medium or hard.
+        A traditional hunt game from rural Bengal. The tiger captures goats by jumping over them; the goats win by
+        trapping the tiger. Play either side on four boards, including the local 13-point hourglass board.
       </p>
-      <h2>Boards</h2>
-      <ul>
-        <li>Hourglass: the local 13-point board with 1 tiger and 7 goats; goats move first.</li>
-        <li>Little Square: a 3 by 3 warm-up board with 1 tiger and 3 goats.</li>
-        <li>Village Square: the classic 5 by 5 alquerque board with 1 tiger and 8 goats.</li>
-        <li>Four Tigers: the 5 by 5 board with a tiger in every corner and 12 goats.</li>
-      </ul>
+      <h2><a href="./four-in-a-row/">Four in a Row</a></h2>
+      <p>
+        Drop discs into a seven-column board and be the first to line up four, across, down or diagonally. Pick a
+        KAPLAY crew member for your discs and take on Bobo, Ghosty or Gigagantrum.
+      </p>
     </main>
-    <noscript><p>বাঘ-ছাগল (Bagh-Chagol) needs JavaScript to run. Please enable it to play.</p></noscript>
+    <noscript>
+      <p>These games need JavaScript to run. Please enable it to play
+        <a href="./bagh-chagol/">Bagh-Chagol</a> or <a href="./four-in-a-row/">Four in a Row</a>.</p>
+    </noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

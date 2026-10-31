@@ -4,6 +4,7 @@ import type { MapDef, Side } from "./rules";
 import type { Difficulty } from "./ai/client";
 import type { Avatar } from "./art/crew";
 import type { FourRowDef } from "./fourrow/rules";
+import { ROOT } from "./site";
 
 export interface MapEntry {
   def: MapDef;
@@ -11,7 +12,7 @@ export interface MapEntry {
   modelUrl: string | null;
 }
 
-const BASE = new URL(import.meta.env.BASE_URL + "maps/", document.baseURI).href; // absolute: the AI worker needs it
+const BASE = ROOT + "maps/"; // absolute: the AI worker needs it
 
 export async function loadMaps(): Promise<MapEntry[]> {
   const index: { id: string; trained: boolean }[] = await (await fetch(BASE + "index.json")).json();
@@ -47,7 +48,7 @@ export function saveSettings(s: Settings) {
 
 // ----- four-in-a-row -----------------------------------------------------------
 
-const FOURROW = new URL(import.meta.env.BASE_URL + "fourrow/", document.baseURI).href;
+const FOURROW = ROOT + "fourrow/";
 
 export interface FourRowEntry {
   def: FourRowDef;
