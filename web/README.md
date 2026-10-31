@@ -11,6 +11,19 @@ bun run test     # check the TypeScript rules against Python
 bun run build    # static site in dist/ (works from any folder, e.g. GitHub Pages)
 ```
 
+## Publishing (SEO and link previews)
+
+Build with the address the site will live at, so link previews and search engines get
+absolute URLs (canonical link, `og:url`, `og:image`, `robots.txt`, `sitemap.xml`):
+
+```sh
+SITE_URL=https://you.github.io/bagh-chagol/ bun run build
+```
+
+The icons and the share image (`public/og-image.png`, 1200x630, a screenshot of the
+menu) are made by `bun scripts/make-share-images.mjs` while `bun run preview --port 4173`
+is running. Re-run it after visual changes to the menu.
+
 After training a network in the parent project, export it:
 
 ```sh

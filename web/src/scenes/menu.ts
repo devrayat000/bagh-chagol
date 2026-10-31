@@ -138,11 +138,11 @@ export function menuScene(maps: MapEntry[], settings: Settings, ai: AiClient) {
 
     const ty = R.y + pad + S + 8;
     text(m.def.title, R.x + pad + 2, ty, { size: Math.min(20, R.w * 0.09), font: "ui-bold", color: selected ? P.gold : P.ink });
-    // Badge on the preview's top-right corner, so it never collides with the title.
+    // Badge sits on the card's top edge like a sticker: it never covers pieces or the title.
     const badge = m.trained ? "Trained AI" : "AI in training";
     const bs = Math.min(12, R.w * 0.055);
     const bw = k.formatText({ text: badge, size: bs, font: "ui-bold" }).width + 14;
-    const bx = R.x + R.w - pad - bw - S * 0.06, by = R.y + pad + S * 0.075;
+    const bx = R.x + R.w - bw - 12, by = R.y - (bs + 8) / 2;
     k.drawRect({ pos: k.vec2(bx, by), width: bw, height: bs + 8, radius: (bs + 8) / 2, color: col(m.trained ? P.goatDeep : "#6b3b2a") });
     text(badge, bx + bw / 2, by + 4, { size: bs, font: "ui-bold", anchor: "top", color: P.ink });
     text(m.def.blurb, R.x + pad + 2, ty + 28, { size: Math.min(13, R.w * 0.058), color: P.inkDim, width: R.w - 2 * pad - 4, lineSpacing: -2 });
