@@ -3,6 +3,6 @@
  "rows": 6,
  "cols": 7,
  "connect": 4,
- "trained": false,
- "iteration": 0
+ "trained": true,
+ "iteration": 70
 }

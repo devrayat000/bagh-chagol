@@ -416,6 +416,32 @@ Expect red's self-play win rate to rise as the net gets stronger. This game has 
 exact solver in the project, so the alpha-beta agent is the fixed yardstick, as the
 greedy baseline is for bagh-chal.
 
+### Making it stronger without training for hours
+
+The first four-in-a-row run (1 process, 200 games x 50 simulations per iteration,
+fixed learning rate) beat a depth-4 alpha-beta search only ~60% of the time and
+opened in the wrong column. Thirty more iterations with four changes won every game
+against alpha-beta at depth 4 *and* depth 6, and 59-1-0 against the old network:
+
+1. **Parallel self-play** (`core/parallel.py`, `workers=3`). MCTS is plain Python, so
+   one process used one CPU core while the GPU sat mostly idle. Worker processes
+   each play part of the games: ~2.3x more data per minute. More than 3 workers was
+   *slower*: they queue up for the single GPU.
+2. **More data, better targets.** The extra speed bought 600 games and 100
+   simulations per move per iteration: 3x the positions, each with a better MCTS
+   policy to imitate.
+3. **Value target = average of result and search value** (`q_weight=0.5`). The final
+   result z is noisy: one exploratory move late in a game can flip it. The search's
+   root value q is a steadier opinion of the same position. Training on (z + q) / 2
+   is one of the main findings of Oracle's "Lessons from AlphaZero" Connect Four series.
+4. **Learning rate that glides down** (`lr_final=1e-4`, cosine). A fixed 1e-3 kept
+   the network jumping around (the scores vs greedy swung from 30% to 100% between
+   evaluations); lowering it at the end lets it settle.
+
+Watch the self-play results while it trains: red's share of wins rises when the
+network discovers the first-player win through the centre, then yellow's rises as
+it learns to defend. That back-and-forth is self-play doing its job.
+
 ## Ideas for later
 
 - **Placement phase:** goats enter the board one per turn, as in many village

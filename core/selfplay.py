@@ -18,24 +18,28 @@ Sample = tuple[np.ndarray, np.ndarray, float]  # (planes, MCTS policy pi, final 
 
 
 def self_play(mcts: MCTS, cfg, n_games: int, temp_plies: int,
-              rng: np.random.Generator) -> tuple[list[Sample], Counter]:  # fmt: skip
+              rng: np.random.Generator, q_weight: float = 0.0) -> tuple[list[Sample], Counter]:  # fmt: skip
     """Play n_games of the agent against itself.
 
     Every position yields one training sample:
       planes - what the net sees
       pi     - MCTS visit distribution (the improved policy we want the net to imitate)
-      z      - how the game actually ended, from the view of the side to move then
+      z      - how the game actually ended, from the view of the side to move then;
+               with q_weight > 0, blended with q, the search's own estimate of the position:
+                   target = (1 - q_weight) * z + q_weight * q
+               z alone is noisy (one exploratory move late in the game can flip it);
+               q is a steadier, if biased, opinion of the same position.
     """
     states = [spec_of(cfg).initial()] * n_games
     ids = list(range(n_games))
-    history: list[list[tuple[np.ndarray, np.ndarray, int]]] = [[] for _ in range(n_games)]
+    history: list[list[tuple[np.ndarray, np.ndarray, int, float]]] = [[] for _ in range(n_games)]
     results: dict[int, int] = {}
 
     while states:
-        visits, _ = mcts.search(states, add_noise=True)
+        visits, root_values = mcts.search(states, add_noise=True)
         next_states, next_ids = [], []
-        for gid, s, v in zip(ids, states, visits):
-            history[gid].append((s.encode(), v / v.sum(), s.to_play))
+        for gid, s, v, q in zip(ids, states, visits, root_values):
+            history[gid].append((s.encode(), v / v.sum(), s.to_play, q))
             a = select_action(v, 1.0 if s.ply < temp_plies else 0.0, rng)
             nxt = s.apply(a)
             w = nxt.winner()
@@ -47,7 +51,9 @@ def self_play(mcts: MCTS, cfg, n_games: int, temp_plies: int,
         states, ids = next_states, next_ids
 
     samples = [
-        (planes, pi, outcome(results[gid], side)) for gid in range(n_games) for planes, pi, side in history[gid]
+        (planes, pi, (1 - q_weight) * outcome(results[gid], side) + q_weight * q)
+        for gid in range(n_games)
+        for planes, pi, side, q in history[gid]
     ]
     return samples, Counter(results.values())
 

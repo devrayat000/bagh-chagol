@@ -17,9 +17,11 @@ class TrainConfig:
     dirichlet_alpha: float = 0.3  # root noise shape (smaller = spikier)
     dirichlet_eps: float = 0.25  # fraction of root prior replaced with noise
     temp_plies: int = 10  # sample moves (temperature 1) for this many plies, then play greedily
+    q_weight: float = 0.0  # value target = (1 - q_weight) * game result + q_weight * search value (see self_play)
     buffer_size: int = 50_000  # replay buffer capacity, in positions
     batch_size: int = 256
     lr: float = 1e-3
+    lr_final: float | None = None  # if set, the learning rate glides down to this by the last iteration (cosine)
     weight_decay: float = 1e-4
     train_steps: int = 200  # gradient steps per iteration
     arena_games: int = 0  # >0: new net must beat the best net to be promoted (AlphaGo Zero style);
@@ -30,6 +32,7 @@ class TrainConfig:
     eval_every: int = 1  # run that evaluation every k iterations (it costs time)
     channels: int = 64
     blocks: int = 4
+    workers: int = 0  # >0: play self-play games in this many worker processes (core/parallel.py)
 
 
 @dataclass(frozen=True)

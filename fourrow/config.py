@@ -31,10 +31,15 @@ class FourRowConfig:
 PRESETS: dict[str, Preset] = {
     # The classic 7x6 board. Only 7 actions, so a larger Dirichlet alpha
     # (~10 / number of moves, as in AlphaZero) for the root noise.
+    # Speed: MCTS runs in Python, so self-play is spread over 3 worker processes
+    # (more just queue up for the one GPU): ~1 min per iteration on an RTX 3060.
+    # Strength: the value target blends the game result with the search's own
+    # estimate (q_weight), and the learning rate glides down so the net settles.
     "fourrow": Preset(
         FourRowConfig(name="fourrow"),
-        TrainConfig(iterations=60, games_per_iter=200, sims=200, dirichlet_alpha=1.0, temp_plies=8,
-                    buffer_size=100_000, train_steps=400, channels=64, blocks=5, eval_every=2),  # fmt: skip
+        TrainConfig(iterations=30, games_per_iter=600, sims=100, dirichlet_alpha=1.0, temp_plies=8,
+                    q_weight=0.5, lr=1e-3, lr_final=1e-4, buffer_size=150_000, train_steps=600,
+                    channels=64, blocks=5, eval_every=2, workers=3),  # fmt: skip
     ),
 }
 

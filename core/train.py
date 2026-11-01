@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import copy
 import csv
+import math
 import random
 import time
 from collections import deque
@@ -26,6 +27,7 @@ import torch.nn.functional as F
 from .config import Preset
 from .mcts import MCTS, MCTSAgent
 from .net import NetEvaluator, build_net, default_device, load_checkpoint, save_checkpoint
+from .parallel import SelfPlayPool
 from .selfplay import format_results, play_match, score, self_play
 from .spec import spec_of
 from .symmetry import transform_batch
@@ -67,6 +69,19 @@ def train(preset_name: str, preset: Preset, resume: bool = False, seed: int = 0)
     if spec.perfect_positions:  # small enough to solve exactly: measure against perfect play
         perfect_test = spec.perfect_positions(1000, seed)
 
+    last_iter = start_iter + tc.iterations - 1
+
+    def learning_rate(it: int) -> float:
+        """Constant, or a cosine glide from lr to lr_final: big steps early, fine-tuning at the end."""
+        if tc.lr_final is None or last_iter == start_iter:
+            return tc.lr
+        p = (it - start_iter) / (last_iter - start_iter)
+        return tc.lr_final + (tc.lr - tc.lr_final) * 0.5 * (1 + math.cos(math.pi * p))
+
+    pool = SelfPlayPool(preset, tc.workers, device) if tc.workers > 0 else None
+    if pool:
+        print(f"self-play in {tc.workers} worker processes")
+
     def make_mcts(model, sims):
         return MCTS(NetEvaluator(model, device), sims, tc.c_puct, tc.dirichlet_alpha, tc.dirichlet_eps,
                     seed=int(rng.integers(1 << 31)))  # fmt: skip
@@ -83,10 +98,16 @@ def train(preset_name: str, preset: Preset, resume: bool = False, seed: int = 0)
             t0 = time.time()
 
             # 1. Self-play with the best network.
-            samples, sp_results = self_play(make_mcts(best, tc.sims), game, tc.games_per_iter, tc.temp_plies, rng)
+            if pool:
+                samples, sp_results = pool.play(best, tc.games_per_iter, rng)
+            else:
+                samples, sp_results = self_play(make_mcts(best, tc.sims), game, tc.games_per_iter, tc.temp_plies, rng,
+                                                tc.q_weight)  # fmt: skip
             buffer.extend(samples)
 
             # 2. Train the candidate network on the replay buffer.
+            for group in opt.param_groups:
+                group["lr"] = learning_rate(it)
             net.train()
             loss_p_sum = loss_v_sum = 0.0
             steps = tc.train_steps if len(buffer) >= tc.batch_size else 0
@@ -156,6 +177,8 @@ def train(preset_name: str, preset: Preset, resume: bool = False, seed: int = 0)
                           f"{arena:.3f}", int(promoted), score0, score1, f"{acc:.4f}", f"{secs:.1f}"])  # fmt: skip
             log_file.flush()
 
+    if pool:
+        pool.close()
     print(f"done. best network: {out_dir / 'best.pt'}")
 
 
